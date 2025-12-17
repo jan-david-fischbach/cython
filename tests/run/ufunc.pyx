@@ -161,7 +161,7 @@ def test_plus_one_twice():
 @cython.ufunc
 cdef double return_stops_execution(double x):
     return x
-    print "This should not happen"
+    print("This should not happen")
 
 @cython.ufunc
 cdef double return_in_if(double x):

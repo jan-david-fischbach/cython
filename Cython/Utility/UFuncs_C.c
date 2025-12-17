@@ -1,6 +1,8 @@
 ///////////////////////// UFuncsInit.proto /////////////////////////
 //@proto_block: utility_code_proto_before_types
 
+// TODO: accept function signature
+
 #include <numpy/arrayobject.h>
 #include <numpy/ufuncobject.h>
 

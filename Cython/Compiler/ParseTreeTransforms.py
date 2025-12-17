@@ -2478,6 +2478,9 @@ if VALUE is not None:
         if "ufunc" in lenv.directives:
             from . import UFuncs
             return UFuncs.convert_to_ufunc(node)
+        if "gufunc" in lenv.directives:
+            from . import UFuncs
+            return UFuncs.convert_to_gufunc(node)
         return node
 
     def visit_DefNode(self, node):

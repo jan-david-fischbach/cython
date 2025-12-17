@@ -367,7 +367,8 @@ directive_types = {
     'binding' : bool,
     'cfunc' : None,  # decorators do not take directive value
     'ccall' : None,
-    'ufunc': None,
+    'ufunc': None, 
+    'gufunc': str, #TODO: double check
     'cpow' : bool,
     'inline' : None,
     'staticmethod' : None,
@@ -455,7 +456,7 @@ directive_scopes = {  # defaults to available everywhere
 # A list of directives that (when used as a decorator) are only applied to
 # the object they decorate and not to its children.
 immediate_decorator_directives = {
-    'cfunc', 'ccall', 'cclass', 'dataclasses.dataclass', 'ufunc',
+    'cfunc', 'ccall', 'cclass', 'dataclasses.dataclass', 'ufunc', 'gufunc',
     # function signature directives
     'inline', 'exceptval', 'returns', 'with_gil',  # 'nogil',
     # class directives

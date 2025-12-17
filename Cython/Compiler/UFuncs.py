@@ -113,7 +113,7 @@ class UFuncConversion:
             return "NPY_OBJECT"
         # TODO possible NPY_BOOL to bint but it needs a cast?
         # TODO NPY_DATETIME, NPY_TIMEDELTA, NPY_STRING, NPY_UNICODE and maybe NPY_VOID might be handleable
-        error(pos, "Type '%s' cannot be used as a ufunc argument" % type_)
+        error(pos, "Type '%s' cannot be used as a ufunc argument (no strategy found)" % type_)
 
     def get_in_type_info(self):
         definitions = []
@@ -139,13 +139,16 @@ class UFuncConversion:
             )
         return definitions
 
-    def generate_cy_utility_code(self):
+    def generate_cy_utility_code(self, generalized: bool = False):
         arg_types = [(a.injected_typename, a.type) for a in self.in_definitions]
         out_types = [(a.injected_typename, a.type) for a in self.out_definitions]
         context_types = dict(arg_types + out_types)
         self.node.entry.used = True
 
-        ufunc_cname = self.global_scope.next_id(self.node.entry.name + "_ufunc_def")
+        g = "g" if generalized else ""
+        G = "G" if generalized else ""
+
+        ufunc_cname = self.global_scope.next_id(self.node.entry.name + f"_{g}ufunc_def")
 
         will_be_called_without_gil = not (any(t.is_pyobject for _, t in arg_types) or
             any(t.is_pyobject for _, t in out_types))
@@ -161,7 +164,7 @@ class UFuncConversion:
         )
 
         ufunc_global_scope = Symtab.ModuleScope(
-            "ufunc_module", None, self.global_scope.context
+            f"{g}ufunc_module", None, self.global_scope.context
         )
         ufunc_global_scope.declare_cfunction(
             name=self.node.entry.cname,
@@ -172,12 +175,15 @@ class UFuncConversion:
         )
 
         code = CythonUtilityCode.load(
-            "UFuncDefinition",
+            f"{G}UFuncDefinition",
             "UFuncs.pyx",
             context=context,
             from_scope = ufunc_global_scope,
             #outer_module_scope=ufunc_global_scope,
         )
+
+        # Poor man's debugging
+        print(code.impl)
 
         tree = code.get_tree(entries_only=True)
         return tree
@@ -194,33 +200,94 @@ class UFuncConversion:
             UtilityCode.load_cached("NumpyImportUFunc", "NumpyImportArray.c")
         )
 
+class GUFuncConversion(UFuncConversion):
+    def __init__(self, node):
+        self.node = node
+        self.parse_signature()
+
+        super().__init__(node)
+
+    def parse_signature(self):
+        """parse the gufunc signature string into a tuple of input and output shapes"""
+        self.signature_str = self.node.local_scope.directives.get("gufunc", None)
+        if self.signature_str is None:
+            n_args = len(self.node.args)
+            self.signature_str = ",".join(["()"]*(n-1)) + "->()"
+
+        try:
+            parts = self.signature_str.split("->")
+            in_part = parts[0].strip()
+            out_part = parts[1].strip() if len(parts) > 1 else ""
+            in_shapes = [s.strip(" ()") for s in in_part.split(",") if s.strip()]
+            out_shapes = [s.strip(" ()") for s in out_part.split(",") if s.strip()]
+            self.signature = (in_shapes, out_shapes)
+        except Exception as e:
+            error(self.node.pos, f"Invalid gufunc signature: {self.signature_str}")
+            self.signature = None
+
+    def get_io_type_info(self, io: str):
+        definitions = []
+        shapes = self.signature[0 if io == "in" else 1]
+        for n, (arg, shape) in enumerate(zip(self.node.args, shapes)):
+            injected_typename = f"{self.injected_typename}_{io}_{n}"
+            self.injected_types.append(injected_typename)
+            #TODO deal with shape
+            type_const = self._get_type_constant(self.node.pos, arg.type)
+            definitions.append(_ArgumentInfo(arg.type, type_const, injected_typename))
+        return definitions
+
+    def get_in_type_info(self):
+        return self.get_io_type_info("in")
+    
+    def get_out_type_info(self):
+        return self.get_io_type_info("out")
+    
+    def generate_cy_utility_code(self):
+        utility_code = super().generate_cy_utility_code(generalized=True)
+        return utility_code
+
+
+def convert_to(what: str):
+    available_converters = {
+        "ufunc":  UFuncConversion,
+        "gufunc": GUFuncConversion,
+    }
+    chosen_converter = available_converters.get(what, None)
+    assert chosen_converter is not None, f"Unknown converter type: {what}"
+
+    def do_conversion(node):
+        if isinstance(node, Nodes.CFuncDefNode):
+            if node.local_scope.parent_scope.is_c_class_scope:
+                error(node.pos, "Methods cannot currently be converted to a ufunc")
+                return node
+            converters = [chosen_converter(node)]
+            original_node = node
+        elif isinstance(node, FusedNode.FusedCFuncDefNode) and isinstance(
+            node.node, Nodes.CFuncDefNode
+        ):
+            if node.node.local_scope.parent_scope.is_c_class_scope:
+                error(node.pos, "Methods cannot currently be converted to a ufunc")
+                return node
+            converters = [chosen_converter(n) for n in node.nodes]
+            original_node = node.node
+        else:
+            error(node.pos, "Only C functions can be converted to a ufunc")
+            return node
+
+        if not converters:
+            return  # this path probably shouldn't happen
+
+        del converters[0].global_scope.entries[original_node.entry.name]
+        # the generic utility code is generic, so there's no reason to do it multiple times
+        converters[0].use_generic_utility_code()
+        return [node] + _generate_stats_from_converters(converters, original_node)
+    return do_conversion
 
 def convert_to_ufunc(node):
-    if isinstance(node, Nodes.CFuncDefNode):
-        if node.local_scope.parent_scope.is_c_class_scope:
-            error(node.pos, "Methods cannot currently be converted to a ufunc")
-            return node
-        converters = [UFuncConversion(node)]
-        original_node = node
-    elif isinstance(node, FusedNode.FusedCFuncDefNode) and isinstance(
-        node.node, Nodes.CFuncDefNode
-    ):
-        if node.node.local_scope.parent_scope.is_c_class_scope:
-            error(node.pos, "Methods cannot currently be converted to a ufunc")
-            return node
-        converters = [UFuncConversion(n) for n in node.nodes]
-        original_node = node.node
-    else:
-        error(node.pos, "Only C functions can be converted to a ufunc")
-        return node
+    return convert_to("ufunc")(node)
 
-    if not converters:
-        return  # this path probably shouldn't happen
-
-    del converters[0].global_scope.entries[original_node.entry.name]
-    # the generic utility code is generic, so there's no reason to do it multiple times
-    converters[0].use_generic_utility_code()
-    return [node] + _generate_stats_from_converters(converters, original_node)
+def convert_to_gufunc(node):
+    return convert_to("gufunc")(node)
 
 
 def generate_ufunc_initialization(converters, cfunc_nodes, original_node):
@@ -273,9 +340,10 @@ def generate_ufunc_initialization(converters, cfunc_nodes, original_node):
         docstr.as_c_string_literal() if docstr else "NULL",
     )
 
+    # TODO: accept function signature
     call_node = ExprNodes.PythonCapiCallNode(
         pos,
-        function_name="PyUFunc_FromFuncAndData",
+        function_name="PyUFunc_FromFuncAndData", 
         # use a dummy type because it's honestly too fiddly
         func_type=PyrexTypes.CFuncType(
             PyrexTypes.py_object_type,
