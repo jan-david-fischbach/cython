@@ -73,6 +73,11 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     {{for idx in range(len(out_types)+len(in_types))}}
     cdef npy_intp step_{{idx}} = steps[{{idx}}]
     {{endfor}}
+    {{for idx, dim_name in enumerate(dimension_names)}}
+    # NumPy provides dimensions in order of first appearance in signature
+    # dimensions[0] is batch size, dimensions[1..N] are named dimensions
+    cdef npy_intp dim_{{dim_name}} = dimensions[{{idx + 1}}]
+    {{endfor}}
 
     {{"with gil" if (not nogil and will_be_called_without_gil) else "if True"}}:
         for i in range(n):
@@ -97,7 +102,7 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
             {{endif}}
             {{endfor}}
 
-            {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}{{", " if out_types else ""}}{{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
+            {{inline_func_call}}({{", ".join(["cast_in_{}".format(idx) for idx in range(len(in_types))] + ["cast_out_{}".format(idx) for idx in range(len(out_types))] + ["dim_{}".format(dim_name) for dim_name in dimension_names])}})
 
             {{for idx, tn_tp in enumerate(out_types)}}
             # All outputs in gufuncs are modified in place via pointers, no need to write back

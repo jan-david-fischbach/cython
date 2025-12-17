@@ -199,6 +199,21 @@ class GUFuncConversion(UFuncConversion):
         self.node = node
         self.parse_signature(signature_str)
 
+        # Validate parameter count after parsing signature
+        if self.signature:
+            num_inputs = len(self.signature[0])
+            num_outputs = len(self.signature[1])
+            num_named_dims = len(self.dimension_names_ordered)
+            expected_total_args = num_inputs + num_outputs + num_named_dims
+
+            if len(self.node.args) != expected_total_args:
+                error(
+                    self.node.pos,
+                    f"gufunc signature '{self.signature_str}' expects {expected_total_args} parameters "
+                    f"({num_inputs} inputs + {num_outputs} outputs + {num_named_dims} dimensions: "
+                    f"{', '.join(self.dimension_names_ordered)}), but function has {len(self.node.args)} parameters"
+                )
+
         super().__init__(node)
 
     def parse_signature(self, signature_str):
@@ -208,28 +223,63 @@ class GUFuncConversion(UFuncConversion):
         if self.signature_str is None:
             error(self.node.pos, "gufunc must be provided with a signature")
             self.signature = None
+            self.named_dimensions = {}  # dimension name -> index
+            self.dimension_names_ordered = []
             return
 
         try:
+            import re
             parts = self.signature_str.split("->")
             in_part = parts[0].strip()
             out_part = parts[1].strip() if len(parts) > 1 else ""
-            in_shapes = [s.strip(" ()") for s in in_part.split(",") if s.strip()]
-            out_shapes = [s.strip(" ()") for s in out_part.split(",") if s.strip()]
+
+            # Extract shapes by matching parenthesized groups
+            # e.g., "(m,n),(n,p)" -> ["m,n", "n,p"]
+            in_shapes = [m.group(1) for m in re.finditer(r'\(([^)]*)\)', in_part)]
+            out_shapes = [m.group(1) for m in re.finditer(r'\(([^)]*)\)', out_part)]
+
             self.signature = (in_shapes, out_shapes)
+
+            # Extract named dimensions (non-numeric dimension names)
+            # NumPy orders dimensions left-to-right through the signature, taking unique ones.
+            # For "(i,t),(j,t)->(i,j)", scanning left to right gives: i, t, j, t, i, j
+            # Taking unique: i, t, j (in order of first appearance)
+            # See NumPy docs: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
+            seen_dimensions = {}
+            dimension_names_ordered = []
+
+            for shape in in_shapes + out_shapes:
+                if shape:  # Non-empty shape (not a scalar)
+                    # Split by comma for multi-dimensional shapes like "m,n"
+                    dims = [d.strip() for d in shape.split(',')]
+                    for dim in dims:
+                        if dim and not dim.isdigit():  # Named dimension (not a fixed number)
+                            if dim not in seen_dimensions:
+                                seen_dimensions[dim] = len(dimension_names_ordered)
+                                dimension_names_ordered.append(dim)
+
+            self.dimension_names_ordered = dimension_names_ordered
+            self.named_dimensions = seen_dimensions
         except Exception as e:
             error(self.node.pos, f"Invalid gufunc signature: {self.signature_str}")
             self.signature = None
+            self.named_dimensions = {}
+            self.dimension_names_ordered = []
 
     def get_io_type_info(self, io: str):
         definitions = []
         shapes = self.signature[0 if io == "in" else 1]
 
         # Determine which args correspond to this io type
+        # Parameter order: inputs, outputs, dimensions
+        num_inputs = len(self.signature[0])
+        num_outputs = len(self.signature[1])
+
         if io == "in":
-            args_to_use = self.node.args[:len(self.signature[0])]
+            args_to_use = self.node.args[:num_inputs]
         else:  # io == "out"
-            args_to_use = self.node.args[len(self.signature[0]):]
+            # Outputs come right after inputs
+            args_to_use = self.node.args[num_inputs:num_inputs + num_outputs]
 
         for n, (arg, shape) in enumerate(zip(args_to_use, shapes)):
             injected_typename = f"{self.injected_typename}_{io}_{n}"
@@ -281,6 +331,7 @@ class GUFuncConversion(UFuncConversion):
             out_types=out_types,
             in_shapes=in_shapes,
             out_shapes=out_shapes,
+            dimension_names=self.dimension_names_ordered,
             inline_func_call=self.node.entry.cname,
             nogil=self.node.entry.type.nogil,
             will_be_called_without_gil=will_be_called_without_gil,
