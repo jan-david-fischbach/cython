@@ -231,7 +231,9 @@ class GUFuncConversion(UFuncConversion):
         for n, (arg, shape) in enumerate(zip(self.node.args, shapes)):
             injected_typename = f"{self.injected_typename}_{io}_{n}"
             self.injected_types.append(injected_typename)
-            #TODO deal with shape
+            # FIXME deal with the fact that some inputs/outputs have a shape 
+            # (for now we can assume the shape to be given by a tuple of integers; but in the future it would be nice to accept variables shapes too)
+            # see https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html#details-of-signature for a description of possible signatures
             type_const = self._get_type_constant(self.node.pos, arg.type)
             definitions.append(_ArgumentInfo(arg.type, type_const, injected_typename))
         return definitions

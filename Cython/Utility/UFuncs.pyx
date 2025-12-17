@@ -92,6 +92,10 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
             {{endif}}
             {{endfor}}
 
+
+            # FIXME make sure to pass outputs by reference to make retrieval possible
+            # Array-valued inputs should probably also be passed by reference
+
             {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}, \
             {{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
 
