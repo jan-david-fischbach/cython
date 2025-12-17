@@ -439,8 +439,8 @@ def test_matvec():
     """
 
 @cython.gufunc("(i,t),(j,t)->(i,j)")
-cdef void outer_inner(double* a, double* b, double* out, cnp.npy_intp i, cnp.npy_intp j, cnp.npy_intp t):
-    """Outer product of inner products"""
+cdef void outer_inner(double* a, double* b, double* out, cnp.npy_intp i, cnp.npy_intp t, cnp.npy_intp j):
+    """Outer product of inner products - note parameter order: i, t, j to match NumPy"""
     cdef cnp.npy_intp ii, jj, k
     for ii in range(i):
         for jj in range(j):
@@ -461,7 +461,25 @@ def test_outer_inner():
            [39., 53., 67.]])
     """
 
-# Test to verify dimension passing
+# Test to verify dimension passing with debugging
+@cython.gufunc("(i,t),(j,t)->(i,j)")
+cdef void outer_inner_debug(double* a, double* b, double* out, cnp.npy_intp i, cnp.npy_intp t, cnp.npy_intp j):
+    """Debug version - stores dimension values in output"""
+    # Store dimensions in first row for debugging
+    out[0] = <double>i
+    out[1] = <double>t
+    out[2] = <double>j
+
+def test_outer_inner_debug():
+    """
+    >>> a = np.array([[1., 2.], [3., 4.]])  # shape (2, 2)
+    >>> b = np.array([[5., 6.], [7., 8.], [9., 10.]])  # shape (3, 2)
+    >>> result = outer_inner_debug(a, b)
+    >>> result.shape
+    (2, 3)
+    >>> result[0, :]  # Should show i, t, j = 2, 2, 3
+    array([2., 2., 3.])
+    """
 @cython.gufunc("(n),(n)->()")
 cdef void sum_of_products(double* a, double* b, double* out, cnp.npy_intp n):
     """Sum of element-wise products"""
