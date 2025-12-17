@@ -183,7 +183,9 @@ class UFuncConversion:
         )
 
         # Poor man's debugging
+        print("### Transformed (g)ufunc code ###")
         print(code.impl)
+        print("### End of transformed (g)ufunc code ###")
 
         tree = code.get_tree(entries_only=True)
         return tree
