@@ -209,12 +209,12 @@ class GUFuncConversion(UFuncConversion):
             self.signature_str = self._signature_str_override
         else:
             self.signature_str = self.node.local_scope.directives.get("gufunc", None)
-        
+
         if self.signature_str is None:
             error(self.node.pos, "gufunc must be provided with a signature")
             self.signature = None
             return
-            
+
         try:
             parts = self.signature_str.split("->")
             in_part = parts[0].strip()
@@ -229,23 +229,23 @@ class GUFuncConversion(UFuncConversion):
     def get_io_type_info(self, io: str):
         definitions = []
         shapes = self.signature[0 if io == "in" else 1]
-        
+
         # Determine which args correspond to this io type
         if io == "in":
             args_to_use = self.node.args[:len(self.signature[0])]
         else:  # io == "out"
             args_to_use = self.node.args[len(self.signature[0]):]
-        
+
         for n, (arg, shape) in enumerate(zip(args_to_use, shapes)):
             injected_typename = f"{self.injected_typename}_{io}_{n}"
             self.injected_types.append(injected_typename)
-            
+
             # For gufuncs:
             # - Inputs with shape like (n) are array pointers
             # - Inputs with shape () are scalar values
             # - ALL outputs are pointers, regardless of shape
             arg_type = arg.type
-            
+
             # Extract base type for numpy type constant
             if arg_type.is_ptr:
                 # For pointer types (array inputs or any outputs), use the base type
@@ -254,16 +254,16 @@ class GUFuncConversion(UFuncConversion):
             else:
                 # For scalar inputs (no pointer), use the type directly
                 type_const = self._get_type_constant(self.node.pos, arg_type)
-            
+
             definitions.append(_ArgumentInfo(arg_type, type_const, injected_typename))
         return definitions
 
     def get_in_type_info(self):
         return self.get_io_type_info("in")
-    
+
     def get_out_type_info(self):
         return self.get_io_type_info("out")
-    
+
     def generate_cy_utility_code(self):
         # Override to pass shape information to the template
         arg_types = [(a.injected_typename, a.type) for a in self.in_definitions]
@@ -371,10 +371,10 @@ def generate_gufunc_initialization(converters, cfunc_nodes, original_node):
     type_constants = []
     narg_in = None
     narg_out = None
-    
+
     # Get the signature from the first converter (should be the same for all)
     signature_str = converters[0].signature_str
-    
+
     for c in converters:
         in_const = [d.type_constant for d in c.in_definitions]
         if narg_in is not None:
@@ -497,7 +497,7 @@ def generate_ufunc_initialization(converters, cfunc_nodes, original_node):
     # TODO: accept function signature
     call_node = ExprNodes.PythonCapiCallNode(
         pos,
-        function_name="PyUFunc_FromFuncAndData", 
+        function_name="PyUFunc_FromFuncAndData",
         # use a dummy type because it's honestly too fiddly
         func_type=PyrexTypes.CFuncType(
             PyrexTypes.py_object_type,

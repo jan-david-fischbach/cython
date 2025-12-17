@@ -81,7 +81,7 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     {{for idx in range(len(out_types)+len(in_types))}}
     cdef npy_intp step_{{idx}} = steps[{{idx}}]
     {{endfor}}
-    
+
     {{"with gil" if (not nogil and will_be_called_without_gil) else "if True"}}:
         for i in range(n):
             {{for idx, tn_tp in enumerate(in_types)}}
