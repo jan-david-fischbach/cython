@@ -5,7 +5,7 @@
     "distutils": {
         "name": "gufunc",
         "sources": [
-            "/home/runner/work/cython/cython/tests/run/gufunc.pyx"
+            "gufunc.pyx"
         ]
     },
     "module_name": "gufunc"
@@ -36,7 +36,7 @@ END: Cython Metadata */
 #else
 #define __PYX_ABI_VERSION "3_3_0a0"
 #define CYTHON_HEX_VERSION 0x030300A0
-#define CYTHON_FUTURE_DIVISION 1
+#define CYTHON_FUTURE_DIVISION 0
 /* CModulePreamble */
 #include <stddef.h>
 #ifndef offsetof
@@ -1351,7 +1351,7 @@ static const char *__pyx_filename;
 /* #### Code section: filename_table ### */
 
 static const char* const __pyx_f[] = {
-  "tests/run/gufunc.pyx",
+  "gufunc.pyx",
   "<stringsource>",
 };
 /* #### Code section: utility_code_proto_before_types ### */
@@ -2308,10 +2308,10 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_kp_u_a1_np_array_1_2_3_4_a2_np_array __pyx_string_tab[1]
 #define __pyx_kp_u_a1_np_array_1_2_3_a2_np_array_1 __pyx_string_tab[2]
 #define __pyx_kp_u_a1_np_array_1_2_3_a2_np_array_1_2 __pyx_string_tab[3]
-#define __pyx_kp_u_test_mimo_line_47 __pyx_string_tab[4]
-#define __pyx_kp_u_test_multidim_out_line_12 __pyx_string_tab[5]
-#define __pyx_kp_u_test_reduction_line_30 __pyx_string_tab[6]
-#define __pyx_kp_u_tests_run_gufunc_pyx __pyx_string_tab[7]
+#define __pyx_kp_u_gufunc_pyx __pyx_string_tab[4]
+#define __pyx_kp_u_test_mimo_line_47 __pyx_string_tab[5]
+#define __pyx_kp_u_test_multidim_out_line_12 __pyx_string_tab[6]
+#define __pyx_kp_u_test_reduction_line_30 __pyx_string_tab[7]
 #define __pyx_n_u_Pyx_PyDict_NextRef __pyx_string_tab[8]
 #define __pyx_n_u_asyncio_coroutines __pyx_string_tab[9]
 #define __pyx_n_u_cline_in_traceback __pyx_string_tab[10]
@@ -2842,46 +2842,55 @@ static void reduction_gufunc_def(char **__pyx_v_args, npy_intp const *__pyx_v_di
  * 
  *             cast_in_1 = (<ufunc_typename_in_1*>in_1)[0]             # <<<<<<<<<<<<<<
  * 
- *             cast_out_0 = <ufunc_typename_out_0>out_0
+ *             cast_out_0 = (<ufunc_typename_out_0*>out_0)[0]
 */
           __pyx_v_cast_in_1 = (((double *)__pyx_v_in_1)[0]);
 
           /* "GUFuncDefinition":82
  *             cast_in_1 = (<ufunc_typename_in_1*>in_1)[0]
  * 
- *             cast_out_0 = <ufunc_typename_out_0>out_0             # <<<<<<<<<<<<<<
+ *             cast_out_0 = (<ufunc_typename_out_0*>out_0)[0]             # <<<<<<<<<<<<<<
  * 
  *             __pyx_f_6gufunc_reduction(cast_in_0, cast_in_1, cast_out_0)
 */
-          __pyx_v_cast_out_0 = ((double *)__pyx_v_out_0);
+          __pyx_v_cast_out_0 = (((double **)__pyx_v_out_0)[0]);
 
           /* "GUFuncDefinition":84
- *             cast_out_0 = <ufunc_typename_out_0>out_0
+ *             cast_out_0 = (<ufunc_typename_out_0*>out_0)[0]
  * 
  *             __pyx_f_6gufunc_reduction(cast_in_0, cast_in_1, cast_out_0)             # <<<<<<<<<<<<<<
  * 
- *             in_0 += step_0
+ * 
 */
           __pyx_f_6gufunc_reduction(__pyx_v_cast_in_0, __pyx_v_cast_in_1, __pyx_v_cast_out_0); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 84, __pyx_L4_error)
 
-          /* "GUFuncDefinition":86
- *             __pyx_f_6gufunc_reduction(cast_in_0, cast_in_1, cast_out_0)
+          /* "GUFuncDefinition":87
  * 
+ * 
+ *             (<ufunc_typename_out_0*>out_0)[0] = cast_out_0             # <<<<<<<<<<<<<<
+ *             in_0 += step_0
+ *             in_1 += step_1
+*/
+          (((double **)__pyx_v_out_0)[0]) = __pyx_v_cast_out_0;
+
+          /* "GUFuncDefinition":88
+ * 
+ *             (<ufunc_typename_out_0*>out_0)[0] = cast_out_0
  *             in_0 += step_0             # <<<<<<<<<<<<<<
  *             in_1 += step_1
  *             out_0 += step_2
 */
           __pyx_v_in_0 = (__pyx_v_in_0 + __pyx_v_step_0);
 
-          /* "GUFuncDefinition":87
- * 
+          /* "GUFuncDefinition":89
+ *             (<ufunc_typename_out_0*>out_0)[0] = cast_out_0
  *             in_0 += step_0
  *             in_1 += step_1             # <<<<<<<<<<<<<<
  *             out_0 += step_2
 */
           __pyx_v_in_1 = (__pyx_v_in_1 + __pyx_v_step_1);
 
-          /* "GUFuncDefinition":88
+          /* "GUFuncDefinition":90
  *             in_0 += step_0
  *             in_1 += step_1
  *             out_0 += step_2             # <<<<<<<<<<<<<<
@@ -3762,25 +3771,25 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 9; } index[] = {{1},{274},{184},{193},{19},{27},{24},{20},{20},{18},{18},{8},{6},{13},{5},{8},{4},{10},{12},{8},{12},{9},{10},{8},{9},{17},{14},{6},{2}};
-    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (405 bytes) */
-const char* const cstring = "BZh91AY&SYd\246\027\033\000\000\376\337\300`\220@e\377\343\204\001P\n\277\357\377`@\0000\001\230\255\226\301$\222f\232OSh&\246\203j\000h\001\342j\r4SiCCCF\206M\000\000\000\004\210\225?SLSM\031\007\224\332\206\232\000\000iD\221\223\336\302\303r\302\244\202\373N\360\250!\027\002P\251\355\357+;@:\302\215\260\246\"\034T\325\255\214\214\205\300\262\002\020>\025\275\005\325\276\345\271\031\360!\\\236Q\214\206\010\016\232@-*v:\346\313\252\256\313z\350)\t \320s\3416\301\247\203\247\205\023O7\350\255\345r\2738\326\271\t\272\220\330'\014)\205=\256P\332l\243R8\230J\031\241\223\242\001b$\260Im\307j\342\267X\266\020\252\251\025T\210HG\177\312\t\321\342\214Tc\205\202D\221\014\353!$\222\331\003\234\314>\365\2710\264\372\177=^f\255G\006c\"\010%B\305\232\331S\244B\327\005!\177z\251Y\315\235\205a\236\2336\263\001\031g\270\232\306\311\323\254\336\020\013\200N\363\001\0011\001\245iiE\213 3\200\352\r$2\023\025b0\207\200\233evPU\025K\311c\013H\242\261\246\323\326=B\275sti\252\n\346ch\364\033\350\2526F)\300=\244\221\214\235n\tO\n\355o\353\032MH@\250(\252mz\002\215GJ\340\303\212\255%\277\201{\320k[b\357\361w$S\205\t\006Jaq\260";
-    PyObject *data = __Pyx_DecompressString(cstring, 405, 2);
+    const struct { const unsigned int length: 9; } index[] = {{1},{274},{184},{193},{10},{19},{27},{24},{20},{18},{18},{8},{6},{13},{5},{8},{4},{10},{12},{8},{12},{9},{10},{8},{9},{17},{14},{6},{2}};
+    #if (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (393 bytes) */
+const char* const cstring = "BZh91AY&SYh\373\365O\000\000\375\337\300`\220@e\177\343\204\001P\n\277\357\377`@\0000\001\230\325\231\004\221Ty\246\2464&\210\300\230\214\200\007\223A\211&I\372\240\0002\003@\000\000\022\"\223\3221&G\244<\243\324=M\000\0004\250\005\227\010\r&\365\205\t\005\366\235\301@B-\004\241U\355\357+S@:B\214\341LD8\241\311{\031\031\013B\310\010@\365\256\010-\245\326\255\350\325\201\n\324\360\312d1@tL\002\332\247\245\327^]Tzl\353\250R\022:v\235\3410Qv\213\312\021\207\200op\276k\331;\301T\020\260\026\010\030\003\rjP\332l\251\251\034L%\014\271\223t\002\304I`\222\317\034\326\273;K\201L\314\2054\222\2202\227\346\025-]\361|\252\210\272Bi\304$\323$\222K\320\035\331\210hRL,~\241\327(\030,\350\324\314\177\221Ad\353\311\232\353(\306\240\271\302\200\277\222\314\255\352\317\246A\206=\364\263%U\230VwZ\327\274\313\010\004B\260\276\233\003A\261\204\3336\342\242\271C\274)\003\305\222\233\256%\233\212\210\262\265\235B\240\250\\K\030XEKKM\247\270w\212\345\315~\332 \245l\264\255\004i\262\232S\2453I#|\236\335\tM\032\240\333\353kh\010\231\202w\313HM\220\362\2706\252\222Y\374.i\320e{n~\302\356H\247\n\022\r\037~\251\340";
+    PyObject *data = __Pyx_DecompressString(cstring, 393, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (355 bytes) */
-const char* const cstring = "x\332\245R\261N\3030\020\025+_\3411\225\"\267NC[\006\312\302\214*\326\252:\031\307\005\213\304\t\261\215\232\215O\347\354\204\3204j;`\351\"\347\336\363\275\273g?\336\022\\\353\365\232pF\036\210\256(\257k\336D[Fc\222`\3141R\272\233\374\361\222\001/E\374\016c\201\261<\346\225\316\"\261p\271U\231*\000\177#\316b<>\240P\363\316+\0312Q\212j\0030\354;\235mP!^\016\265vq\300\272\265E\345\230\260\231\307V#\354\336c\253\226p\202\2610e\300\022\272\353\232\277\356\310y7\316\272\326\272Q\313\314\t\253J}\335\212\263F\204\236\231\027a^\205\3652\377\357{|{\252(\257\265\232\\\274\265y\367<\322S\353\027\2777\266\352\215\267\322X\360\222$\312\225\226$]N\332\324\321\033\352 \226\264Poh\227\237\317B\336Lk\247\247on\357\264\240Us\000\330\340g\323<)a\341Y\036\354\213\334s\323h\241J*\312\032\353\342a#|\tP\032l\315\205|\345\342\003\300W\000h+\2012\320\263\225\225\205\001(8\362C\323\370-3\227K\030\364\013\240y\2019\200O\307\363v\3377m\244\315\260\021\244\003\204q\240\267`4\370p\334/\236;i\276o~\000\315\177\t\304";
-    PyObject *data = __Pyx_DecompressString(cstring, 355, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (347 bytes) */
+const char* const cstring = "x\332\245RAO\2030\030\215W\177E\217,!\315\312p\303\203x\361l\214\327e\371RK\247\215P&m\r\334\374\351~-\210c\013\356`\223\217\224\357=x\357{\355\3755\301\225\3479\341\214\334\021}\240\274ix\027m\031\215I\202\265\302J\351n\361\313K&\274\024\361\033\2545\326\346\230W;\213\304\312\225V\025\252\002|\2158\213\361\363\t\205\2327~\220\241\023\245\2506\001\303~\320\331\006\025\342\345Pk\027\007lX[T\216\t[z,;\303n=\226\365\204\023\214\205)\003\226\320\335`\376r\"\363i\314\246\326\247\321\310\302\t\253j}9\212\331 \202g\346E\230Wa\243\314\377}\237\237\236\252\352KV\223?Om5\\\217\3644\372\365\317\211ec\360\257n\357\264\240\207\256\265\322X\360\342$*\225\226$\335,\372\326\321m\032 \226\364\320\030\355\320_-\027\000O]\213\365\240\204\205G\331\332g\271\347\246\323B\325T\324\r\376\003\211Fx:(\r\266\341B\276p\361\016\340}\000\364~@\031\030\331\312\312\312\000T\034\371\301 >\353\302\225\022&\336\0004\257\260\007\360\341x\331\357G\203F\332\002\215 \035 X\207q\334\263!\247\243}\362\322I\363u\365\r\316\245\005\336";
+    PyObject *data = __Pyx_DecompressString(cstring, 347, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (959 bytes) */
-const char* const bytes = "?\n    >>> a1 = np.array([1., 2., 3., 4.])\n    >>> a2 = np.array([4., 5., 6., 7.])\n    >>> out = multidim_out(a1, a2)\n    >>> out.shape\n    (4, 3)\n    >>> out\n    array([[ 5.,  4.,  6.],\n           [ 7., 10.,  8.],\n           [ 9., 18., 10.],\n           [11., 28., 12.]])\n    \n    >>> a1 = np.array([1., 2., 3.])\n    >>> a2 = np.array([1., 2., 3., 4.])\n    >>> out = reduction(a1, a2)\n    >>> out.shape\n    (4,)\n    >>> out\n    array([11., 12., 13., 14.])\n    \n    >>> a1 = np.array([1., 2., 3.])\n    >>> a2 = np.array([1., 2.])\n    >>> out = mimo(a1, a2)\n    >>> out.shape\n    (2, 3)\n    >>> out\n    array([[3., 5., 4.],\n           [6., 10., 8.]])\n    test_mimo (line 47)test_multidim_out (line 12)test_reduction (line 30)tests/run/gufunc.pyx__Pyx_PyDict_NextRefasyncio.coroutinescline_in_traceback__func__gufunc_is_coroutineitems__main__mimo__module__multidim_out__name____qualname__reductionsetdefault__test__test_mimotest_multidim_outtest_reductionvalues\200\001";
+    #else /* compression: none (949 bytes) */
+const char* const bytes = "?\n    >>> a1 = np.array([1., 2., 3., 4.])\n    >>> a2 = np.array([4., 5., 6., 7.])\n    >>> out = multidim_out(a1, a2)\n    >>> out.shape\n    (4, 3)\n    >>> out\n    array([[ 5.,  4.,  6.],\n           [ 7., 10.,  8.],\n           [ 9., 18., 10.],\n           [11., 28., 12.]])\n    \n    >>> a1 = np.array([1., 2., 3.])\n    >>> a2 = np.array([1., 2., 3., 4.])\n    >>> out = reduction(a1, a2)\n    >>> out.shape\n    (4,)\n    >>> out\n    array([11., 12., 13., 14.])\n    \n    >>> a1 = np.array([1., 2., 3.])\n    >>> a2 = np.array([1., 2.])\n    >>> out = mimo(a1, a2)\n    >>> out.shape\n    (2, 3)\n    >>> out\n    array([[3., 5., 4.],\n           [6., 10., 8.]])\n    gufunc.pyxtest_mimo (line 47)test_multidim_out (line 12)test_reduction (line 30)__Pyx_PyDict_NextRefasyncio.coroutinescline_in_traceback__func__gufunc_is_coroutineitems__main__mimo__module__multidim_out__name____qualname__reductionsetdefault__test__test_mimotest_multidim_outtest_reductionvalues\200\001";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
@@ -3862,17 +3871,17 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   {
     const __Pyx_PyCode_New_function_description descr = {0, 0, 0, 0, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 12};
     PyObject* const varnames[] = {0};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_tests_run_gufunc_pyx, __pyx_mstate->__pyx_n_u_test_multidim_out, __pyx_mstate->__pyx_kp_b_iso88591__2, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_gufunc_pyx, __pyx_mstate->__pyx_n_u_test_multidim_out, __pyx_mstate->__pyx_kp_b_iso88591__2, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {0, 0, 0, 0, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 30};
     PyObject* const varnames[] = {0};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_tests_run_gufunc_pyx, __pyx_mstate->__pyx_n_u_test_reduction, __pyx_mstate->__pyx_kp_b_iso88591__2, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_gufunc_pyx, __pyx_mstate->__pyx_n_u_test_reduction, __pyx_mstate->__pyx_kp_b_iso88591__2, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {0, 0, 0, 0, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 47};
     PyObject* const varnames[] = {0};
-    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_tests_run_gufunc_pyx, __pyx_mstate->__pyx_n_u_test_mimo, __pyx_mstate->__pyx_kp_b_iso88591__2, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[2] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_gufunc_pyx, __pyx_mstate->__pyx_n_u_test_mimo, __pyx_mstate->__pyx_kp_b_iso88591__2, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[2])) goto bad;
   }
   Py_DECREF(tuple_dedup_map);
   return 0;

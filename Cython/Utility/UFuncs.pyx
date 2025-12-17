@@ -103,22 +103,15 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
             {{elif tn_tp[1].is_pyobject}}
             cast_out_{{idx}} = (<{{tn_tp[0]}}>(<void**>out_{{idx}})[0])
             {{else}}
-            # Scalar output: will be written back after function call
-            cast_out_{{idx}} = (<{{tn_tp[0]}}*>out_{{idx}})[0]
+            # Scalar output: cast to pointer type (gufunc outputs are always pointers)
+            cast_out_{{idx}} = <{{tn_tp[0]}}>out_{{idx}}
             {{endif}}
             {{endfor}}
 
             {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}{{", " if out_types else ""}}{{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
 
             {{for idx, tn_tp in enumerate(out_types)}}
-            {{if out_shapes[idx]}}
-            # Array output: already modified in place, no need to write back
-            {{elif tn_tp[1].is_pyobject}}
-            (<void**>out_{{idx}})[0] = <void*>__Pyx_NewRef(cast_out_{{idx}})
-            {{else}}
-            # Scalar output: write back
-            (<{{tn_tp[0]}}*>out_{{idx}})[0] = cast_out_{{idx}}
-            {{endif}}
+            # All outputs in gufuncs are modified in place via pointers, no need to write back
             {{endfor}}
             {{for idx in range(len(in_types))}}
             in_{{idx}} += step_{{idx}}

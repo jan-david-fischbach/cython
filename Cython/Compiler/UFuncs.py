@@ -532,7 +532,9 @@ def _generate_stats_from_converters(converters, node):
 
     # Choose the appropriate initialization function based on converter type
     if isinstance(converters[0], GUFuncConversion):
+        print(f"### Using gufunc initialization for {node.entry.name} ###")
         stats.append(generate_gufunc_initialization(converters, stats, node))
     else:
+        print(f"### Using ufunc initialization for {node.entry.name} ###")
         stats.append(generate_ufunc_initialization(converters, stats, node))
     return stats
