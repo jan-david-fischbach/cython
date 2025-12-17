@@ -83,7 +83,7 @@ def test_args_float():
     """
     >>> a1 = np.array([1., 2., 3.])
     >>> a2 = np.array([1., 2., 3., 4.])
-    >>> a3 = np.array([1., 2., 3., 4.])
+    >>> a3 = np.array([1., 2., 3., 4.], dtype=np.float32)
     >>> out = args_float(a1, a2, a3)
     >>> out.shape
     (4,)
@@ -97,13 +97,13 @@ cdef void args_int(int a1, int a2, int* out):
 
 def test_args_int():
     """
-    >>> a1 = np.array([1, 2, 3, 4], dtype=int)
-    >>> a2 = np.array([1, 2, 3, 4], dtype=int)
+    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int32)
+    >>> a2 = np.array([1, 2, 3, 4], dtype=np.int32)
     >>> out = args_int(a1, a2)
     >>> out.shape
     (4,)
     >>> out
-    array([ 2, 4, 6, 8])
+    array([2, 4, 6, 8], dtype=int32)
     """
 
 from libc.math cimport atan2, hypot
@@ -132,11 +132,11 @@ cdef void args_complex(int a1, double complex a2, double complex* out):
 
 def test_args_number_t():
     """
-    >>> a1 = np.array([1, 2, 3, 4], dtype=int)
+    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int32)
     >>> a2 = np.array([1+1j, 2+1j, 3+1j, 4+2j])
-    >>> out = args_number_t(a1, a2)
+    >>> out = args_complex(a1, a2)
     >>> out.shape
     (4,)
     >>> out
-    array([ 2+1j, 4+1j, 6+1j, 8+1j])
+    array([2.+1.j, 4.+1.j, 6.+1.j, 8.+2.j])
     """
