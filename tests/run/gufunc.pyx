@@ -6,12 +6,6 @@ cimport numpy as cnp
 
 import numpy as np
 
-ctypedef double complex double_complex
-
-ctypedef fused number_t:
-    double complex
-    double
-
 @cython.gufunc("(),()->(3)")
 cdef void multidim_out(double a1, double a2, double* out):
     out[0] = a1 + a2
@@ -83,34 +77,33 @@ def test_long_signature():
 
 @cython.gufunc("(3),(),()->()")
 cdef void args_float(double* a1, double a2, float a3, double* out):
-    out[0] = a1[0] +a1[1] + a1[2] + a2
+    out[0] = a1[0] +a1[1] + a1[2] + a2 + a3
 
 def test_args_float():
     """
     >>> a1 = np.array([1., 2., 3.])
     >>> a2 = np.array([1., 2., 3., 4.])
     >>> a3 = np.array([1., 2., 3., 4.])
-    >>> out = long_signature(a1, a2, a3)
+    >>> out = args_float(a1, a2, a3)
     >>> out.shape
     (4,)
     >>> out
     array([ 8., 10., 12., 14.])
     """
 
-@cython.gufunc("(3),(),()->()")
-cdef void args_int_float(double* a1, int a2, float a3, double* out):
-    out[0] = a1[0] +a1[1] + a1[2] + a2
+@cython.gufunc("(),()->()")
+cdef void args_int(int a1, int a2, int* out):
+    out[0] = a1 + a2
 
-def test_args_int_float():
+def test_args_int():
     """
-    >>> a1 = np.array([1., 2., 3.])
-    >>> a2 = np.array([1, 2, 3, 4])
-    >>> a3 = np.array([1., 2., 3., 4.])
-    >>> out = long_signature(a1, a2, a3)
+    >>> a1 = np.array([1, 2, 3, 4], dtype=int)
+    >>> a2 = np.array([1, 2, 3, 4], dtype=int)
+    >>> out = args_int(a1, a2)
     >>> out.shape
     (4,)
     >>> out
-    array([ 8., 10., 12., 14.])
+    array([ 2, 4, 6, 8])
     """
 
 from libc.math cimport atan2, hypot
@@ -131,4 +124,19 @@ def test_car2cyl():
     >>> cyl
     array([[ 5.        , -0.92729522,  1.        ],
            [ 0.        ,  0.        ,  0.        ]])
+    """
+
+@cython.gufunc("(),()->()")
+cdef void args_complex(int a1, double complex a2, double complex* out):
+    out[0] = a1 + a2
+
+def test_args_number_t():
+    """
+    >>> a1 = np.array([1, 2, 3, 4], dtype=int)
+    >>> a2 = np.array([1+1j, 2+1j, 3+1j, 4+2j])
+    >>> out = args_number_t(a1, a2)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([ 2+1j, 4+1j, 6+1j, 8+1j])
     """

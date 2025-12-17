@@ -204,10 +204,7 @@ class GUFuncConversion(UFuncConversion):
     def parse_signature(self):
         """parse the gufunc signature string into a tuple of input and output shapes"""
         self.signature_str = self.node.local_scope.directives.get("gufunc", None)
-        if self.signature_str is None:
-            n_args = len(self.node.args)
-            self.signature_str = ",".join(["()"]*(n_args-1)) + "->()"
-
+        assert self.signature_str is not None, "gufunc must be provided with a signature"
         try:
             parts = self.signature_str.split("->")
             in_part = parts[0].strip()
