@@ -328,3 +328,162 @@ def test_batching_with_multiple_inputs():
            [15., 26.]])
     """
 
+# Tests for named dimensions (variable size dimensions)
+
+@cython.gufunc("(i),(i)->()")
+cdef void inner1d(double* a, double* b, double* out, cnp.npy_intp i):
+    """Inner product of two 1D arrays with variable size"""
+    cdef cnp.npy_intp j
+    out[0] = 0
+    for j in range(i):
+        out[0] += a[j] * b[j]
+
+def test_inner1d():
+    """
+    Test inner product with 1D arrays
+    >>> a = np.array([1., 2., 3.])
+    >>> b = np.array([4., 5., 6.])
+    >>> result = inner1d(a, b)
+    >>> float(result)
+    32.0
+    
+    Test with 2D batch
+    >>> a = np.array([[1., 2., 3.], [4., 5., 6.]])
+    >>> b = np.array([[7., 8., 9.], [10., 11., 12.]])
+    >>> result = inner1d(a, b)
+    >>> result
+    array([ 50., 167.])
+    
+    Test with different size
+    >>> a = np.array([1., 2., 3., 4., 5.])
+    >>> b = np.array([5., 4., 3., 2., 1.])
+    >>> result = inner1d(a, b)
+    >>> float(result)
+    35.0
+    """
+
+@cython.gufunc("(m,n),(n,p)->(m,p)")
+cdef void matmat(double* a, double* b, double* out, cnp.npy_intp m, cnp.npy_intp n, cnp.npy_intp p):
+    """Matrix-matrix multiplication"""
+    cdef cnp.npy_intp ii, jj, kk
+    # Initialize output
+    for ii in range(m):
+        for jj in range(p):
+            out[ii * p + jj] = 0
+    # Compute matrix multiplication
+    for ii in range(m):
+        for jj in range(p):
+            for kk in range(n):
+                out[ii * p + jj] += a[ii * n + kk] * b[kk * p + jj]
+
+def test_matmat():
+    """
+    Test 2x3 @ 3x2
+    >>> a = np.array([[1., 2., 3.], [4., 5., 6.]])
+    >>> b = np.array([[7., 8.], [9., 10.], [11., 12.]])
+    >>> result = matmat(a, b)
+    >>> result
+    array([[ 58.,  64.],
+           [139., 154.]])
+    
+    Test with batching: (2,2,3) @ (2,3,2)
+    >>> a = np.array([[[1., 2., 3.], [4., 5., 6.]], [[1., 1., 1.], [2., 2., 2.]]])
+    >>> b = np.array([[[7., 8.], [9., 10.], [11., 12.]], [[1., 0.], [0., 1.], [1., 0.]]])
+    >>> result = matmat(a, b)
+    >>> result.shape
+    (2, 2, 2)
+    >>> result[0]
+    array([[ 58.,  64.],
+           [139., 154.]])
+    >>> result[1]
+    array([[2., 1.],
+           [4., 2.]])
+    """
+
+@cython.gufunc("(n),(n,p)->(p)")
+cdef void vecmat(double* v, double* m, double* out, cnp.npy_intp n, cnp.npy_intp p):
+    """Vector-matrix multiplication: v @ m"""
+    cdef cnp.npy_intp i, j
+    for i in range(p):
+        out[i] = 0
+        for j in range(n):
+            out[i] += v[j] * m[j * p + i]
+
+def test_vecmat():
+    """
+    Test vector @ matrix
+    >>> v = np.array([1., 2., 3.])
+    >>> m = np.array([[1., 2.], [3., 4.], [5., 6.]])
+    >>> result = vecmat(v, m)
+    >>> result
+    array([22., 28.])
+    """
+
+@cython.gufunc("(m,n),(n)->(m)")
+cdef void matvec(double* mat, double* v, double* out, cnp.npy_intp m, cnp.npy_intp n):
+    """Matrix-vector multiplication: mat @ v"""
+    cdef cnp.npy_intp i, j
+    for i in range(m):
+        out[i] = 0
+        for j in range(n):
+            out[i] += mat[i * n + j] * v[j]
+
+def test_matvec():
+    """
+    Test matrix @ vector
+    >>> m = np.array([[1., 2., 3.], [4., 5., 6.]])
+    >>> v = np.array([7., 8., 9.])
+    >>> result = matvec(m, v)
+    >>> result
+    array([ 50., 122.])
+    """
+
+@cython.gufunc("(i,t),(j,t)->(i,j)")
+cdef void outer_inner(double* a, double* b, double* out, cnp.npy_intp i, cnp.npy_intp j, cnp.npy_intp t):
+    """Outer product of inner products"""
+    cdef cnp.npy_intp ii, jj, k
+    for ii in range(i):
+        for jj in range(j):
+            out[ii * j + jj] = 0
+            for k in range(t):
+                out[ii * j + jj] += a[ii * t + k] * b[jj * t + k]
+
+def test_outer_inner():
+    """
+    Test outer-inner product
+    >>> a = np.array([[1., 2.], [3., 4.]])  # 2x2: i=2, t=2
+    >>> b = np.array([[5., 6.], [7., 8.], [9., 10.]])  # 3x2: j=3, t=2
+    >>> result = outer_inner(a, b)
+    >>> result.shape
+    (2, 3)
+    >>> np.round(result, 2)
+    array([[17., 23., 29.],
+           [39., 53., 67.]])
+    """
+
+# Test to verify dimension passing
+@cython.gufunc("(n),(n)->()")
+cdef void sum_of_products(double* a, double* b, double* out, cnp.npy_intp n):
+    """Sum of element-wise products"""
+    cdef cnp.npy_intp i
+    out[0] = 0
+    for i in range(n):
+        out[0] += a[i] * b[i]
+
+def test_sum_of_products():
+    """
+    Test that dimensions are passed correctly
+    >>> a = np.array([1., 2., 3.])
+    >>> b = np.array([4., 5., 6.])
+    >>> result = sum_of_products(a, b)
+    >>> float(result)
+    32.0
+    
+    Test with different size
+    >>> a = np.array([1., 2.])
+    >>> b = np.array([3., 4.])
+    >>> result = sum_of_products(a, b)
+    >>> float(result)
+    11.0
+    """
+
