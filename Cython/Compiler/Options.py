@@ -367,8 +367,8 @@ directive_types = {
     'binding' : bool,
     'cfunc' : None,  # decorators do not take directive value
     'ccall' : None,
-    'ufunc': None, 
-    'gufunc': str, #TODO: double check
+    'ufunc': None,
+    'gufunc': str,
     'cpow' : bool,
     'inline' : None,
     'staticmethod' : None,

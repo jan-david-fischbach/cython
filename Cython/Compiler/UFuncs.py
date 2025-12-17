@@ -139,16 +139,13 @@ class UFuncConversion:
             )
         return definitions
 
-    def generate_cy_utility_code(self, generalized: bool = False):
+    def generate_cy_utility_code(self):
         arg_types = [(a.injected_typename, a.type) for a in self.in_definitions]
         out_types = [(a.injected_typename, a.type) for a in self.out_definitions]
         context_types = dict(arg_types + out_types)
         self.node.entry.used = True
 
-        g = "g" if generalized else ""
-        G = "G" if generalized else ""
-
-        ufunc_cname = self.global_scope.next_id(self.node.entry.name + f"_{g}ufunc_def")
+        ufunc_cname = self.global_scope.next_id(self.node.entry.name + "_ufunc_def")
 
         will_be_called_without_gil = not (any(t.is_pyobject for _, t in arg_types) or
             any(t.is_pyobject for _, t in out_types))
@@ -164,7 +161,7 @@ class UFuncConversion:
         )
 
         ufunc_global_scope = Symtab.ModuleScope(
-            f"{g}ufunc_module", None, self.global_scope.context
+            "ufunc_module", None, self.global_scope.context
         )
         ufunc_global_scope.declare_cfunction(
             name=self.node.entry.cname,
@@ -175,7 +172,7 @@ class UFuncConversion:
         )
 
         code = CythonUtilityCode.load(
-            f"{G}UFuncDefinition",
+            "UFuncDefinition",
             "UFuncs.pyx",
             context=context,
             from_scope = ufunc_global_scope,
@@ -209,7 +206,7 @@ class GUFuncConversion(UFuncConversion):
         self.signature_str = self.node.local_scope.directives.get("gufunc", None)
         if self.signature_str is None:
             n_args = len(self.node.args)
-            self.signature_str = ",".join(["()"]*(n-1)) + "->()"
+            self.signature_str = ",".join(["()"]*(n_args-1)) + "->()"
 
         try:
             parts = self.signature_str.split("->")
@@ -237,9 +234,9 @@ class GUFuncConversion(UFuncConversion):
             self.injected_types.append(injected_typename)
             
             # For gufuncs:
-            # - Inputs with shape like (3) are array pointers (double*)
-            # - Inputs with shape () are scalar values (double)
-            # - ALL outputs are pointers (double*), regardless of shape
+            # - Inputs with shape like (n) are array pointers
+            # - Inputs with shape () are scalar values
+            # - ALL outputs are pointers, regardless of shape
             arg_type = arg.type
             
             # Extract base type for numpy type constant
