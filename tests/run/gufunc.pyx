@@ -83,7 +83,7 @@ def test_args_float():
     """
     >>> a1 = np.array([1., 2., 3.])
     >>> a2 = np.array([1., 2., 3., 4.])
-    >>> a3 = np.array([1., 2., 3., 4.], dtype=np.float32)
+    >>> a3 = np.array([1., 2., 3., 4.])
     >>> out = args_float(a1, a2, a3)
     >>> out.shape
     (4,)
@@ -97,13 +97,53 @@ cdef void args_int(int a1, int a2, int* out):
 
 def test_args_int():
     """
-    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int32)
-    >>> a2 = np.array([1, 2, 3, 4], dtype=np.int32)
+    >>> a1 = np.array([1, 2, 3, 4], dtype=int)
+    >>> a2 = np.array([1, 2, 3, 4], dtype=int)
     >>> out = args_int(a1, a2)
     >>> out.shape
     (4,)
     >>> out
+    array([ 2, 4, 6, 8])
+    """
+
+ctypedef fused integral:
+    short
+    int
+    long
+    long long
+
+@cython.gufunc("(),()->()")
+cdef void args_int_fused(integral a1, integral a2, integral* out):
+    out[0] = a1 + a2
+
+def test_args_int_fused():
+    """
+    Test with int32
+    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int32)
+    >>> a2 = np.array([1, 2, 3, 4], dtype=np.int32)
+    >>> out = args_int_fused(a1, a2)
+    >>> out.shape
+    (4,)
+    >>> out
     array([2, 4, 6, 8], dtype=int32)
+    
+    Test with int64
+    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int64)
+    >>> a2 = np.array([1, 2, 3, 4], dtype=np.int64)
+    >>> out = args_int_fused(a1, a2)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([2, 4, 6, 8])
+    
+    Test with int16
+    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int16)
+    >>> a2 = np.array([1, 2, 3, 4], dtype=np.int16)
+    >>> out = args_int_fused(a1, a2)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([2, 4, 6, 8], dtype=int16)
     """
 
 from libc.math cimport atan2, hypot
@@ -132,11 +172,11 @@ cdef void args_complex(int a1, double complex a2, double complex* out):
 
 def test_args_number_t():
     """
-    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int32)
+    >>> a1 = np.array([1, 2, 3, 4], dtype=int)
     >>> a2 = np.array([1+1j, 2+1j, 3+1j, 4+2j])
-    >>> out = args_complex(a1, a2)
+    >>> out = args_number_t(a1, a2)
     >>> out.shape
     (4,)
     >>> out
-    array([2.+1.j, 4.+1.j, 6.+1.j, 8.+2.j])
+    array([ 2+1j, 4+1j, 6+1j, 8+1j])
     """

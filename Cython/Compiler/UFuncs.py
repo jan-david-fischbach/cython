@@ -195,16 +195,26 @@ class UFuncConversion:
         )
 
 class GUFuncConversion(UFuncConversion):
-    def __init__(self, node):
+    def __init__(self, node, signature_str=None):
         self.node = node
+        self._signature_str_override = signature_str
         self.parse_signature()
 
         super().__init__(node)
 
     def parse_signature(self):
         """parse the gufunc signature string into a tuple of input and output shapes"""
-        self.signature_str = self.node.local_scope.directives.get("gufunc", None)
-        assert self.signature_str is not None, "gufunc must be provided with a signature"
+        # For fused types, signature might be passed from the original node
+        if self._signature_str_override is not None:
+            self.signature_str = self._signature_str_override
+        else:
+            self.signature_str = self.node.local_scope.directives.get("gufunc", None)
+        
+        if self.signature_str is None:
+            error(self.node.pos, "gufunc must be provided with a signature")
+            self.signature = None
+            return
+            
         try:
             parts = self.signature_str.split("->")
             in_part = parts[0].strip()
@@ -325,7 +335,12 @@ def convert_to(what: str):
             if node.node.local_scope.parent_scope.is_c_class_scope:
                 error(node.pos, "Methods cannot currently be converted to a ufunc")
                 return node
-            converters = [chosen_converter(n) for n in node.nodes]
+            # For gufuncs with fused types, get signature from the original node
+            if what == "gufunc":
+                signature_str = node.node.local_scope.directives.get("gufunc", None)
+                converters = [chosen_converter(n, signature_str=signature_str) for n in node.nodes]
+            else:
+                converters = [chosen_converter(n) for n in node.nodes]
             original_node = node.node
         else:
             error(node.pos, "Only C functions can be converted to a ufunc")
