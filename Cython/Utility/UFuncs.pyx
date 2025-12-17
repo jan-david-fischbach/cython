@@ -64,11 +64,19 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     cdef npy_intp n = dimensions[0]
     {{for idx, tn_tp in enumerate(in_types)}}
     cdef char* in_{{idx}} = args[{{idx}}]
+    {{if in_shapes[idx]}}
     cdef {{tn_tp[0]}} cast_in_{{idx}}
+    {{else}}
+    cdef {{tn_tp[0]}} cast_in_{{idx}}
+    {{endif}}
     {{endfor}}
     {{for idx, tn_tp in enumerate(out_types)}}
     cdef char* out_{{idx}} = args[{{idx+len(in_types)}}]
+    {{if out_shapes[idx]}}
     cdef {{tn_tp[0]}} cast_out_{{idx}}
+    {{else}}
+    cdef {{tn_tp[0]}} cast_out_{{idx}}
+    {{endif}}
     {{endfor}}
     {{for idx in range(len(out_types)+len(in_types))}}
     cdef npy_intp step_{{idx}} = steps[{{idx}}]
@@ -77,32 +85,38 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     {{"with gil" if (not nogil and will_be_called_without_gil) else "if True"}}:
         for i in range(n):
             {{for idx, tn_tp in enumerate(in_types)}}
-            {{if tn_tp[1].is_pyobject}}
+            {{if in_shapes[idx]}}
+            # Array input: cast to pointer type directly
+            cast_in_{{idx}} = <{{tn_tp[0]}}>in_{{idx}}
+            {{elif tn_tp[1].is_pyobject}}
             cast_in_{{idx}} = (<{{tn_tp[0]}}>(<void**>in_{{idx}})[0])
             {{else}}
+            # Scalar input: dereference
             cast_in_{{idx}} = (<{{tn_tp[0]}}*>in_{{idx}})[0]
             {{endif}}
             {{endfor}}
 
             {{for idx, tn_tp in enumerate(out_types)}}
-            {{if tn_tp[1].is_pyobject}}
+            {{if out_shapes[idx]}}
+            # Array output: cast to pointer type directly
+            cast_out_{{idx}} = <{{tn_tp[0]}}>out_{{idx}}
+            {{elif tn_tp[1].is_pyobject}}
             cast_out_{{idx}} = (<{{tn_tp[0]}}>(<void**>out_{{idx}})[0])
             {{else}}
+            # Scalar output: will be written back after function call
             cast_out_{{idx}} = (<{{tn_tp[0]}}*>out_{{idx}})[0]
             {{endif}}
             {{endfor}}
 
-
-            # FIXME make sure to pass outputs by reference to make retrieval possible
-            # Array-valued inputs should probably also be passed by reference
-
-            {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}, \
-            {{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
+            {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}{{", " if out_types else ""}}{{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
 
             {{for idx, tn_tp in enumerate(out_types)}}
-            {{if tn_tp[1].is_pyobject}}
+            {{if out_shapes[idx]}}
+            # Array output: already modified in place, no need to write back
+            {{elif tn_tp[1].is_pyobject}}
             (<void**>out_{{idx}})[0] = <void*>__Pyx_NewRef(cast_out_{{idx}})
             {{else}}
+            # Scalar output: write back
             (<{{tn_tp[0]}}*>out_{{idx}})[0] = cast_out_{{idx}}
             {{endif}}
             {{endfor}}
