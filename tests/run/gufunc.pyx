@@ -2,6 +2,15 @@
 # tag: numpy
 
 cimport cython
+cimport numpy as cnp
+
+import numpy as np
+
+ctypedef double complex double_complex
+
+ctypedef fused number_t:
+    double complex
+    double
 
 @cython.gufunc("(),()->(3)")
 cdef void multidim_out(double a1, double a2, double* out):
@@ -35,7 +44,7 @@ def test_reduction():
     >>> out.shape
     (4,)
     >>> out
-    array([11., 12., 13., 14.])
+    array([ 7.,  8.,  9., 10.])
     """
 
 @cython.gufunc("(3),()->(3)")
@@ -52,6 +61,74 @@ def test_mimo():
     >>> out.shape
     (2, 3)
     >>> out
-    array([[3., 5., 4.],
-           [6., 10., 8.]])
+    array([[ 3.,  5.,  4.],
+           [ 6., 10.,  8.]])
+    """
+
+@cython.gufunc("(3),(),()->()")
+cdef void long_signature(double* a1, double a2, double a3, double* out):
+    out[0] = a1[0] +a1[1] + a1[2] + a2 + a3
+
+def test_long_signature():
+    """
+    >>> a1 = np.array([1., 2., 3.])
+    >>> a2 = np.array([1., 2., 3., 4.])
+    >>> a3 = np.array([1., 2., 3., 4.])
+    >>> out = long_signature(a1, a2, a3)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([ 8., 10., 12., 14.])
+    """
+
+@cython.gufunc("(3),(),()->()")
+cdef void args_float(double* a1, double a2, float a3, double* out):
+    out[0] = a1[0] +a1[1] + a1[2] + a2
+
+def test_args_float():
+    """
+    >>> a1 = np.array([1., 2., 3.])
+    >>> a2 = np.array([1., 2., 3., 4.])
+    >>> a3 = np.array([1., 2., 3., 4.])
+    >>> out = long_signature(a1, a2, a3)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([ 8., 10., 12., 14.])
+    """
+
+@cython.gufunc("(3),(),()->()")
+cdef void args_int_float(double* a1, int a2, float a3, double* out):
+    out[0] = a1[0] +a1[1] + a1[2] + a2
+
+def test_args_int_float():
+    """
+    >>> a1 = np.array([1., 2., 3.])
+    >>> a2 = np.array([1, 2, 3, 4])
+    >>> a3 = np.array([1., 2., 3., 4.])
+    >>> out = long_signature(a1, a2, a3)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([ 8., 10., 12., 14.])
+    """
+
+from libc.math cimport atan2, hypot
+@cython.gufunc("(3)->(3)")
+cdef void car2cyl(double *input, double *output):
+    """Convert cartesian to cylindrical coordinate for gufunc"""
+    cdef double phi = atan2(input[1], input[0])
+    output[0] = hypot(input[0], input[1])
+    output[1] = phi
+    output[2] = input[2]
+
+def test_car2cyl():
+    """
+    >>> car = np.array([[3, -4, 1], [0,0,0]])
+    >>> cyl = car2cyl(car)
+    >>> cyl.shape
+    (2, 3)
+    >>> cyl
+    array([[ 5.        , -0.92729522,  1.        ],
+           [ 0.        ,  0.        ,  0.        ]])
     """
