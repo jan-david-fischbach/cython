@@ -74,6 +74,8 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     cdef npy_intp step_{{idx}} = steps[{{idx}}]
     {{endfor}}
     {{for idx, dim_name in enumerate(dimension_names)}}
+    # NumPy provides dimensions in order of first appearance in signature
+    # dimensions[0] is batch size, dimensions[1..N] are named dimensions
     cdef npy_intp dim_{{dim_name}} = dimensions[{{idx + 1}}]
     {{endfor}}
 

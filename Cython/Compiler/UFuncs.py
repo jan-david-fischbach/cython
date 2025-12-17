@@ -241,9 +241,10 @@ class GUFuncConversion(UFuncConversion):
             self.signature = (in_shapes, out_shapes)
             
             # Extract named dimensions (non-numeric dimension names)
-            # NumPy orders dimensions left-to-right through the signature, taking unique ones
+            # NumPy orders dimensions left-to-right through the signature, taking unique ones.
             # For "(i,t),(j,t)->(i,j)", scanning left to right gives: i, t, j, t, i, j
-            # Taking unique: i, t, j
+            # Taking unique: i, t, j (in order of first appearance)
+            # See NumPy docs: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
             seen_dimensions = {}
             dimension_names_ordered = []
             

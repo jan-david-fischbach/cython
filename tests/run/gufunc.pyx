@@ -440,7 +440,12 @@ def test_matvec():
 
 @cython.gufunc("(i,t),(j,t)->(i,j)")
 cdef void outer_inner(double* a, double* b, double* out, cnp.npy_intp i, cnp.npy_intp t, cnp.npy_intp j):
-    """Outer product of inner products - note parameter order: i, t, j to match NumPy"""
+    """Outer product of inner products
+    
+    Note: Dimension parameters must be in order of first appearance in signature.
+    For "(i,t),(j,t)->(i,j)", scanning left-to-right gives: i, t, j (j appears after t).
+    This matches NumPy's dimension ordering for gufuncs.
+    """
     cdef cnp.npy_intp ii, jj, k
     for ii in range(i):
         for jj in range(j):
