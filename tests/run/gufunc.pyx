@@ -505,3 +505,48 @@ def test_sum_of_products():
     11.0
     """
 
+# Test matrix trace with named dimensions
+@cython.gufunc("(n,n)->()")
+cdef void matrix_trace(double* m, double* out, cnp.npy_intp n):
+    """Compute trace of square matrix"""
+    cdef cnp.npy_intp i
+    out[0] = 0
+    for i in range(n):
+        out[0] += m[i * n + i]
+
+def test_matrix_trace():
+    """
+    Test computing matrix trace
+    >>> m = np.array([[1., 2.], [3., 4.]])
+    >>> result = matrix_trace(m)
+    >>> float(result)
+    5.0
+    
+    Test with 3x3 matrix
+    >>> m = np.array([[1., 0., 0.], [0., 2., 0.], [0., 0., 3.]])
+    >>> result = matrix_trace(m)
+    >>> float(result)
+    6.0
+    """
+
+# Test multiple outputs with named dimensions
+@cython.gufunc("(n)->(),()")
+cdef void mean_and_sum(double* arr, double* mean_out, double* sum_out, cnp.npy_intp n):
+    """Compute both mean and sum"""
+    cdef cnp.npy_intp i
+    sum_out[0] = 0
+    for i in range(n):
+        sum_out[0] += arr[i]
+    mean_out[0] = sum_out[0] / <double>n
+
+def test_mean_and_sum():
+    """
+    Test multiple outputs
+    >>> arr = np.array([1., 2., 3., 4.])
+    >>> mean, sum_val = mean_and_sum(arr)
+    >>> float(mean)
+    2.5
+    >>> float(sum_val)
+    10.0
+    """
+
