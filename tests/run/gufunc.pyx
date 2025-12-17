@@ -209,3 +209,122 @@ def test_args_number_t():
     >>> out
     array([2.+2.j, 0.+4.j, 3.+9.j, 4.+4.j])
     """
+
+# Test multiple outputs
+@cython.gufunc("(),()->(),()")
+cdef void two_outputs(double a, double b, double* out1, double* out2):
+    out1[0] = a + b
+    out2[0] = a * b
+
+def test_two_outputs():
+    """
+    >>> a = np.array([1., 2., 3., 4.])
+    >>> b = np.array([4., 5., 6., 7.])
+    >>> out1, out2 = two_outputs(a, b)
+    >>> out1
+    array([ 5.,  7.,  9., 11.])
+    >>> out2
+    array([ 4., 10., 18., 28.])
+    """
+
+@cython.gufunc("(2)->(),()")
+cdef void array_to_two_outputs(double* arr, double* sum_out, double* prod_out):
+    sum_out[0] = arr[0] + arr[1]
+    prod_out[0] = arr[0] * arr[1]
+
+def test_array_to_two_outputs():
+    """
+    >>> arr = np.array([[1., 2.], [3., 4.], [5., 6.]])
+    >>> sum_out, prod_out = array_to_two_outputs(arr)
+    >>> sum_out
+    array([ 3.,  7., 11.])
+    >>> prod_out
+    array([ 2., 12., 30.])
+    """
+
+@cython.gufunc("()->(2)")
+cdef void scalar_to_array_pair(double x, double* out):
+    out[0] = x
+    out[1] = x * x
+
+def test_scalar_to_array_pair():
+    """
+    >>> x = np.array([1., 2., 3., 4.])
+    >>> out = scalar_to_array_pair(x)
+    >>> out
+    array([[ 1.,  1.],
+           [ 2.,  4.],
+           [ 3.,  9.],
+           [ 4., 16.]])
+    """
+
+# Test multidimensional batching
+@cython.gufunc("(),()->()")
+cdef void simple_add(double a, double b, double* out):
+    out[0] = a + b
+
+def test_multidim_batching():
+    """
+    Test 1D batching
+    >>> a = np.array([1., 2., 3., 4.])
+    >>> b = np.array([10., 20., 30., 40.])
+    >>> result = simple_add(a, b)
+    >>> result
+    array([11., 22., 33., 44.])
+    
+    Test 2D batching
+    >>> a = np.array([[1., 2.], [3., 4.]])
+    >>> b = np.array([[10., 20.], [30., 40.]])
+    >>> result = simple_add(a, b)
+    >>> result
+    array([[11., 22.],
+           [33., 44.]])
+    
+    Test 3D batching
+    >>> a = np.ones((2, 3, 4))
+    >>> b = np.ones((2, 3, 4)) * 2
+    >>> result = simple_add(a, b)
+    >>> result.shape
+    (2, 3, 4)
+    >>> np.float64(result[0, 0, 0])
+    np.float64(3.0)
+    """
+
+@cython.gufunc("(3)->()")
+cdef void sum_3(double* arr, double* out):
+    out[0] = arr[0] + arr[1] + arr[2]
+
+def test_multidim_batching_with_core():
+    """
+    Test 2D array with core dimension
+    >>> arr = np.array([[1., 2., 3.], [4., 5., 6.]])
+    >>> result = sum_3(arr)
+    >>> result
+    array([ 6., 15.])
+    
+    Test 3D array with core dimension (batching over first dimension)
+    >>> arr = np.array([[[1., 2., 3.], [4., 5., 6.]], 
+    ...                 [[7., 8., 9.], [10., 11., 12.]]])
+    >>> result = sum_3(arr)
+    >>> result
+    array([[ 6., 15.],
+           [24., 33.]])
+    """
+
+@cython.gufunc("(2),(2)->(2)")
+cdef void add_2d_vectors(double* a, double* b, double* out):
+    out[0] = a[0] + b[0]
+    out[1] = a[1] + b[1]
+
+def test_batching_with_multiple_inputs():
+    """
+    Test broadcasting: (3, 2) and (2,) -> (3, 2)
+    >>> a = np.array([[1., 2.], [3., 4.], [5., 6.]])
+    >>> b = np.array([10., 20.])
+    >>> result = add_2d_vectors(a, b)
+    >>> result
+    array([[11., 22.],
+           [13., 24.],
+           [15., 26.]])
+    """
+

@@ -64,19 +64,11 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     cdef npy_intp n = dimensions[0]
     {{for idx, tn_tp in enumerate(in_types)}}
     cdef char* in_{{idx}} = args[{{idx}}]
-    {{if in_shapes[idx]}}
     cdef {{tn_tp[0]}} cast_in_{{idx}}
-    {{else}}
-    cdef {{tn_tp[0]}} cast_in_{{idx}}
-    {{endif}}
     {{endfor}}
     {{for idx, tn_tp in enumerate(out_types)}}
     cdef char* out_{{idx}} = args[{{idx+len(in_types)}}]
-    {{if out_shapes[idx]}}
     cdef {{tn_tp[0]}} cast_out_{{idx}}
-    {{else}}
-    cdef {{tn_tp[0]}} cast_out_{{idx}}
-    {{endif}}
     {{endfor}}
     {{for idx in range(len(out_types)+len(in_types))}}
     cdef npy_intp step_{{idx}} = steps[{{idx}}]
@@ -97,13 +89,10 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
             {{endfor}}
 
             {{for idx, tn_tp in enumerate(out_types)}}
-            {{if out_shapes[idx]}}
-            # Array output: cast to pointer type directly
-            cast_out_{{idx}} = <{{tn_tp[0]}}>out_{{idx}}
-            {{elif tn_tp[1].is_pyobject}}
+            {{if tn_tp[1].is_pyobject}}
             cast_out_{{idx}} = (<{{tn_tp[0]}}>(<void**>out_{{idx}})[0])
             {{else}}
-            # Scalar output: cast to pointer type (gufunc outputs are always pointers)
+            # Scalar or Array output: cast to pointer type (gufunc outputs are always pointers)
             cast_out_{{idx}} = <{{tn_tp[0]}}>out_{{idx}}
             {{endif}}
             {{endfor}}

@@ -197,18 +197,13 @@ class UFuncConversion:
 class GUFuncConversion(UFuncConversion):
     def __init__(self, node, signature_str=None):
         self.node = node
-        self._signature_str_override = signature_str
-        self.parse_signature()
+        self.parse_signature(signature_str)
 
         super().__init__(node)
 
-    def parse_signature(self):
+    def parse_signature(self, signature_str):
         """parse the gufunc signature string into a tuple of input and output shapes"""
-        # For fused types, signature might be passed from the original node
-        if self._signature_str_override is not None:
-            self.signature_str = self._signature_str_override
-        else:
-            self.signature_str = self.node.local_scope.directives.get("gufunc", None)
+        self.signature_str = signature_str or self.node.local_scope.directives.get("gufunc", None)
 
         if self.signature_str is None:
             error(self.node.pos, "gufunc must be provided with a signature")
