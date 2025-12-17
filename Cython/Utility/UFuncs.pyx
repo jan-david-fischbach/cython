@@ -73,13 +73,17 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
     {{for idx in range(len(out_types)+len(in_types))}}
     cdef npy_intp step_{{idx}} = steps[{{idx}}]
     {{endfor}}
-    
+
     {{"with gil" if (not nogil and will_be_called_without_gil) else "if True"}}:
         for i in range(n):
             {{for idx, tn_tp in enumerate(in_types)}}
-            {{if tn_tp[1].is_pyobject}}
+            {{if in_shapes[idx]}}
+            # Array input: cast to pointer type directly
+            cast_in_{{idx}} = <{{tn_tp[0]}}>in_{{idx}}
+            {{elif tn_tp[1].is_pyobject}}
             cast_in_{{idx}} = (<{{tn_tp[0]}}>(<void**>in_{{idx}})[0])
             {{else}}
+            # Scalar input: dereference
             cast_in_{{idx}} = (<{{tn_tp[0]}}*>in_{{idx}})[0]
             {{endif}}
             {{endfor}}
@@ -88,23 +92,15 @@ cdef void {{func_cname}}(char **args, const npy_intp *dimensions, const npy_intp
             {{if tn_tp[1].is_pyobject}}
             cast_out_{{idx}} = (<{{tn_tp[0]}}>(<void**>out_{{idx}})[0])
             {{else}}
-            cast_out_{{idx}} = (<{{tn_tp[0]}}*>out_{{idx}})[0]
+            # Scalar or Array output: cast to pointer type (gufunc outputs are always pointers)
+            cast_out_{{idx}} = <{{tn_tp[0]}}>out_{{idx}}
             {{endif}}
             {{endfor}}
 
-
-            # FIXME make sure to pass outputs by reference to make retrieval possible
-            # Array-valued inputs should probably also be passed by reference
-
-            {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}, \
-            {{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
+            {{inline_func_call}}({{", ".join("cast_in_{}".format(idx) for idx in range(len(in_types)))}}{{", " if out_types else ""}}{{", ".join("cast_out_{}".format(idx) for idx in range(len(out_types)))}})
 
             {{for idx, tn_tp in enumerate(out_types)}}
-            {{if tn_tp[1].is_pyobject}}
-            (<void**>out_{{idx}})[0] = <void*>__Pyx_NewRef(cast_out_{{idx}})
-            {{else}}
-            (<{{tn_tp[0]}}*>out_{{idx}})[0] = cast_out_{{idx}}
-            {{endif}}
+            # All outputs in gufuncs are modified in place via pointers, no need to write back
             {{endfor}}
             {{for idx in range(len(in_types))}}
             in_{{idx}} += step_{{idx}}

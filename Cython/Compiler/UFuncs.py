@@ -139,16 +139,13 @@ class UFuncConversion:
             )
         return definitions
 
-    def generate_cy_utility_code(self, generalized: bool = False):
+    def generate_cy_utility_code(self):
         arg_types = [(a.injected_typename, a.type) for a in self.in_definitions]
         out_types = [(a.injected_typename, a.type) for a in self.out_definitions]
         context_types = dict(arg_types + out_types)
         self.node.entry.used = True
 
-        g = "g" if generalized else ""
-        G = "G" if generalized else ""
-
-        ufunc_cname = self.global_scope.next_id(self.node.entry.name + f"_{g}ufunc_def")
+        ufunc_cname = self.global_scope.next_id(self.node.entry.name + "_ufunc_def")
 
         will_be_called_without_gil = not (any(t.is_pyobject for _, t in arg_types) or
             any(t.is_pyobject for _, t in out_types))
@@ -164,7 +161,7 @@ class UFuncConversion:
         )
 
         ufunc_global_scope = Symtab.ModuleScope(
-            f"{g}ufunc_module", None, self.global_scope.context
+            "ufunc_module", None, self.global_scope.context
         )
         ufunc_global_scope.declare_cfunction(
             name=self.node.entry.cname,
@@ -175,17 +172,12 @@ class UFuncConversion:
         )
 
         code = CythonUtilityCode.load(
-            f"{G}UFuncDefinition",
+            "UFuncDefinition",
             "UFuncs.pyx",
             context=context,
             from_scope = ufunc_global_scope,
             #outer_module_scope=ufunc_global_scope,
         )
-
-        # Poor man's debugging
-        print("### Transformed (g)ufunc code ###")
-        print(code.impl)
-        print("### End of transformed (g)ufunc code ###")
 
         tree = code.get_tree(entries_only=True)
         return tree
@@ -203,18 +195,20 @@ class UFuncConversion:
         )
 
 class GUFuncConversion(UFuncConversion):
-    def __init__(self, node):
+    def __init__(self, node, signature_str=None):
         self.node = node
-        self.parse_signature()
+        self.parse_signature(signature_str)
 
         super().__init__(node)
 
-    def parse_signature(self):
+    def parse_signature(self, signature_str):
         """parse the gufunc signature string into a tuple of input and output shapes"""
-        self.signature_str = self.node.local_scope.directives.get("gufunc", None)
+        self.signature_str = signature_str or self.node.local_scope.directives.get("gufunc", None)
+
         if self.signature_str is None:
-            n_args = len(self.node.args)
-            self.signature_str = ",".join(["()"]*(n-1)) + "->()"
+            error(self.node.pos, "gufunc must be provided with a signature")
+            self.signature = None
+            return
 
         try:
             parts = self.signature_str.split("->")
@@ -230,25 +224,89 @@ class GUFuncConversion(UFuncConversion):
     def get_io_type_info(self, io: str):
         definitions = []
         shapes = self.signature[0 if io == "in" else 1]
-        for n, (arg, shape) in enumerate(zip(self.node.args, shapes)):
+
+        # Determine which args correspond to this io type
+        if io == "in":
+            args_to_use = self.node.args[:len(self.signature[0])]
+        else:  # io == "out"
+            args_to_use = self.node.args[len(self.signature[0]):]
+
+        for n, (arg, shape) in enumerate(zip(args_to_use, shapes)):
             injected_typename = f"{self.injected_typename}_{io}_{n}"
             self.injected_types.append(injected_typename)
-            # FIXME deal with the fact that some inputs/outputs have a shape 
-            # (for now we can assume the shape to be given by a tuple of integers; but in the future it would be nice to accept variables shapes too)
-            # see https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html#details-of-signature for a description of possible signatures
-            type_const = self._get_type_constant(self.node.pos, arg.type)
-            definitions.append(_ArgumentInfo(arg.type, type_const, injected_typename))
+
+            # For gufuncs:
+            # - Inputs with shape like (n) are array pointers
+            # - Inputs with shape () are scalar values
+            # - ALL outputs are pointers, regardless of shape
+            arg_type = arg.type
+
+            # Extract base type for numpy type constant
+            if arg_type.is_ptr:
+                # For pointer types (array inputs or any outputs), use the base type
+                base_type = arg_type.base_type
+                type_const = self._get_type_constant(self.node.pos, base_type)
+            else:
+                # For scalar inputs (no pointer), use the type directly
+                type_const = self._get_type_constant(self.node.pos, arg_type)
+
+            definitions.append(_ArgumentInfo(arg_type, type_const, injected_typename))
         return definitions
 
     def get_in_type_info(self):
         return self.get_io_type_info("in")
-    
+
     def get_out_type_info(self):
         return self.get_io_type_info("out")
-    
+
     def generate_cy_utility_code(self):
-        utility_code = super().generate_cy_utility_code(generalized=True)
-        return utility_code
+        # Override to pass shape information to the template
+        arg_types = [(a.injected_typename, a.type) for a in self.in_definitions]
+        out_types = [(a.injected_typename, a.type) for a in self.out_definitions]
+        context_types = dict(arg_types + out_types)
+        self.node.entry.used = True
+
+        ufunc_cname = self.global_scope.next_id(self.node.entry.name + "_gufunc_def")
+
+        will_be_called_without_gil = not (any(t.is_pyobject for _, t in arg_types) or
+            any(t.is_pyobject for _, t in out_types))
+
+        # Add shape information for each input and output
+        in_shapes = self.signature[0]
+        out_shapes = self.signature[1]
+
+        context = dict(
+            func_cname=ufunc_cname,
+            in_types=arg_types,
+            out_types=out_types,
+            in_shapes=in_shapes,
+            out_shapes=out_shapes,
+            inline_func_call=self.node.entry.cname,
+            nogil=self.node.entry.type.nogil,
+            will_be_called_without_gil=will_be_called_without_gil,
+            **context_types
+        )
+
+        ufunc_global_scope = Symtab.ModuleScope(
+            "gufunc_module", None, self.global_scope.context
+        )
+        ufunc_global_scope.declare_cfunction(
+            name=self.node.entry.cname,
+            cname=self.node.entry.cname,
+            type=self.node.entry.type,
+            pos=self.node.pos,
+            visibility="extern",
+        )
+
+        code = CythonUtilityCode.load(
+            "GUFuncDefinition",
+            "UFuncs.pyx",
+            context=context,
+            from_scope = ufunc_global_scope,
+        )
+
+        tree = code.get_tree(entries_only=True)
+        return tree
 
 
 def convert_to(what: str):
@@ -272,7 +330,12 @@ def convert_to(what: str):
             if node.node.local_scope.parent_scope.is_c_class_scope:
                 error(node.pos, "Methods cannot currently be converted to a ufunc")
                 return node
-            converters = [chosen_converter(n) for n in node.nodes]
+            # For gufuncs with fused types, get signature from the original node
+            if what == "gufunc":
+                signature_str = node.node.local_scope.directives.get("gufunc", None)
+                converters = [chosen_converter(n, signature_str=signature_str) for n in node.nodes]
+            else:
+                converters = [chosen_converter(n) for n in node.nodes]
             original_node = node.node
         else:
             error(node.pos, "Only C functions can be converted to a ufunc")
@@ -292,6 +355,88 @@ def convert_to_ufunc(node):
 
 def convert_to_gufunc(node):
     return convert_to("gufunc")(node)
+
+
+def generate_gufunc_initialization(converters, cfunc_nodes, original_node):
+    """Generate initialization code for gufuncs using PyUFunc_FromFuncAndDataAndSignature"""
+    global_scope = converters[0].global_scope
+    ufunc_funcs_name = global_scope.next_id(Naming.pyrex_prefix + "funcs")
+    ufunc_types_name = global_scope.next_id(Naming.pyrex_prefix + "types")
+    ufunc_data_name = global_scope.next_id(Naming.pyrex_prefix + "data")
+    type_constants = []
+    narg_in = None
+    narg_out = None
+
+    # Get the signature from the first converter (should be the same for all)
+    signature_str = converters[0].signature_str
+
+    for c in converters:
+        in_const = [d.type_constant for d in c.in_definitions]
+        if narg_in is not None:
+            assert narg_in == len(in_const)
+        else:
+            narg_in = len(in_const)
+        type_constants.extend(in_const)
+        out_const = [d.type_constant for d in c.out_definitions]
+        if narg_out is not None:
+            assert narg_out == len(out_const)
+        else:
+            narg_out = len(out_const)
+        type_constants.extend(out_const)
+
+    func_cnames = [cfnode.entry.cname for cfnode in cfunc_nodes]
+
+    context = dict(
+        ufunc_funcs_name=ufunc_funcs_name,
+        func_cnames=func_cnames,
+        ufunc_types_name=ufunc_types_name,
+        type_constants=type_constants,
+        ufunc_data_name=ufunc_data_name,
+    )
+    global_scope.use_utility_code(
+        TempitaUtilityCode.load("UFuncConsts", "UFuncs_C.c", context=context)
+    )
+
+    pos = original_node.pos
+    func_name = original_node.entry.name
+    docstr = original_node.doc
+
+    # For gufuncs, use PyUFunc_FromFuncAndDataAndSignature
+    args_to_func = '%s(), %s, %s(), %s, %s, %s, PyUFunc_None, "%s", %s, 0, "%s"' % (
+        ufunc_funcs_name,
+        ufunc_data_name,
+        ufunc_types_name,
+        len(func_cnames),
+        narg_in,
+        narg_out,
+        func_name,
+        docstr.as_c_string_literal() if docstr else "NULL",
+        signature_str,
+    )
+
+    call_node = ExprNodes.PythonCapiCallNode(
+        pos,
+        function_name="PyUFunc_FromFuncAndDataAndSignature",
+        # use a dummy type because it's honestly too fiddly
+        func_type=PyrexTypes.CFuncType(
+            PyrexTypes.py_object_type,
+            [PyrexTypes.CFuncTypeArg("dummy", PyrexTypes.c_void_ptr_type, None)],
+        ),
+        args=[
+            ExprNodes.ConstNode(
+                pos, type=PyrexTypes.c_void_ptr_type, value=args_to_func
+            )
+        ],
+    )
+    lhs_entry = global_scope.declare_var(func_name, PyrexTypes.py_object_type, pos)
+    assgn_node = Nodes.SingleAssignmentNode(
+        pos,
+        lhs=ExprNodes.NameNode(
+            pos, name=func_name, type=PyrexTypes.py_object_type, entry=lhs_entry
+        ),
+        rhs=call_node,
+    )
+    return assgn_node
 
 
 def generate_ufunc_initialization(converters, cfunc_nodes, original_node):
@@ -347,7 +492,7 @@ def generate_ufunc_initialization(converters, cfunc_nodes, original_node):
     # TODO: accept function signature
     call_node = ExprNodes.PythonCapiCallNode(
         pos,
-        function_name="PyUFunc_FromFuncAndData", 
+        function_name="PyUFunc_FromFuncAndData",
         # use a dummy type because it's honestly too fiddly
         func_type=PyrexTypes.CFuncType(
             PyrexTypes.py_object_type,
@@ -379,5 +524,9 @@ def _generate_stats_from_converters(converters, node):
         converter.global_scope.utility_code_list.extend(tree.scope.utility_code_list)
         stats.append(ufunc_node)
 
-    stats.append(generate_ufunc_initialization(converters, stats, node))
+    # Choose the appropriate initialization function based on converter type
+    if isinstance(converters[0], GUFuncConversion):
+        stats.append(generate_gufunc_initialization(converters, stats, node))
+    else:
+        stats.append(generate_ufunc_initialization(converters, stats, node))
     return stats
