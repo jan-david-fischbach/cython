@@ -167,16 +167,45 @@ def test_car2cyl():
     """
 
 @cython.gufunc("(),()->()")
-cdef void args_complex(int a1, double complex a2, double complex* out):
+cdef void args_complex(long a1, double complex a2, double complex* out):
     out[0] = a1 + a2
 
 def test_args_number_t():
     """
-    >>> a1 = np.array([1, 2, 3, 4], dtype=np.int32)
+    >>> a1 = np.array([1, 2, 3, 4])
     >>> a2 = np.array([1+1j, 2+1j, 3+1j, 4+2j])
     >>> out = args_complex(a1, a2)
     >>> out.shape
     (4,)
     >>> out
     array([2.+1.j, 4.+1.j, 6.+1.j, 8.+2.j])
+    """
+
+ctypedef fused number_t:
+    double
+    double complex
+
+@cython.gufunc("(),()->()")
+cdef void args_number_t(number_t a1, number_t a2, number_t* out):
+    out[0] = a1 + a2*a1
+
+def test_args_number_t():
+    """
+    Test with double
+    >>> a1 = np.array([1., 2., 3., 4.])
+    >>> a2 = np.array([1., 2., 3., 4.])
+    >>> out = args_number_t(a1, a2)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([ 2.,  6., 12., 20.])
+
+    Test with double complex
+    >>> a1 = np.array([1.+1j, 2.+2j, 3.+3j, 4.+4j])
+    >>> a2 = np.array([1.+0j, 0.+1j, 1.+1j, 0.+0j])
+    >>> out = args_number_t(a1, a2)
+    >>> out.shape
+    (4,)
+    >>> out
+    array([2.+2.j, 0.+4.j, 3.+9.j, 4.+4.j])
     """
